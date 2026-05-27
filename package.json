@@ -22,7 +22,7 @@
     },
     {
       "name": "quickadd-with-text",
-      "title": "Send Text to QuickAdd",
+      "title": "Send to QuickAdd",
       "subtitle": "Obsidian",
       "description": "Send text from Raycast Root Search to a QuickAdd choice.",
       "mode": "view",

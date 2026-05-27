@@ -31,6 +31,7 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
   const [state, setState] = useState<QuickAddState | null>(null);
   const [error, setError] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);
+  const [inputText, setInputText] = useState(initialText);
 
   async function load() {
     setIsLoading(true);
@@ -52,11 +53,14 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
   }, []);
 
   const choices = state?.choices || [];
-  const searchBarPlaceholder = initialText ? "Search choice to receive the provided text" : "Search QuickAdd choices";
+  const searchBarPlaceholder = directSend ? "Enter text to send to QuickAdd" : "Search QuickAdd choices";
 
   return (
     <List
       isLoading={isLoading}
+      filtering={directSend ? false : undefined}
+      searchText={directSend ? inputText : undefined}
+      onSearchTextChange={directSend ? setInputText : undefined}
       searchBarPlaceholder={searchBarPlaceholder}
       navigationTitle="Obsidian QuickAdd"
       isShowingDetail={Boolean(state)}
@@ -90,7 +94,7 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
           <ChoiceListItem
             key={`${choice.vault.id}:${choice.vault.path}:${choice.name}`}
             choice={choice}
-            initialText={initialText}
+            inputText={directSend ? inputText : initialText}
             directSend={directSend}
             onRefresh={load}
           />
@@ -102,12 +106,12 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
 
 function ChoiceListItem({
   choice,
-  initialText,
+  inputText,
   directSend,
   onRefresh,
 }: {
   choice: QuickAddChoiceWithVault;
-  initialText: string;
+  inputText: string;
   directSend: boolean;
   onRefresh: () => void;
 }) {
@@ -155,7 +159,7 @@ function ChoiceListItem({
                   choice,
                   vaultName,
                   variableName: getDefaultVariableName(),
-                  value: initialText,
+                  value: inputText,
                 })
               }
             />
@@ -163,7 +167,7 @@ function ChoiceListItem({
             <Action.Push
               title="Enter Text"
               icon={Icon.Text}
-              target={<ChoiceForm choice={choice} vaultName={vaultName} initialValue={initialText} />}
+              target={<ChoiceForm choice={choice} vaultName={vaultName} initialValue={inputText} />}
             />
           )}
           {directSend ? (
@@ -171,14 +175,14 @@ function ChoiceListItem({
               title="Edit Text Before Sending"
               icon={Icon.Pencil}
               shortcut={{ modifiers: ["cmd"], key: "e" }}
-              target={<ChoiceForm choice={choice} vaultName={vaultName} initialValue={initialText} />}
+              target={<ChoiceForm choice={choice} vaultName={vaultName} initialValue={inputText} />}
             />
           ) : (
             <Action.Push
               title="Enter Text with Options"
               icon={Icon.Pencil}
               shortcut={{ modifiers: ["cmd"], key: "e" }}
-              target={<ChoiceForm choice={choice} vaultName={vaultName} initialValue={initialText} />}
+              target={<ChoiceForm choice={choice} vaultName={vaultName} initialValue={inputText} />}
             />
           )}
           <Action
@@ -190,7 +194,6 @@ function ChoiceListItem({
           <Action
             title="Open Extension Preferences"
             icon={Icon.Gear}
-            shortcut={{ modifiers: ["cmd"], key: "," }}
             onAction={openExtensionPreferences}
           />
         </ActionPanel>

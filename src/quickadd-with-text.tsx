@@ -7,5 +7,5 @@ type QuickAddWithTextArguments = {
 
 export default function Command(props: LaunchProps<{ arguments?: QuickAddWithTextArguments; fallbackText?: string }>) {
   const text = props.arguments?.text || props.fallbackText || "";
-  return <ChoiceList initialText={text} directSend={Boolean(text.trim())} />;
+  return <ChoiceList initialText={text} directSend />;
 }
