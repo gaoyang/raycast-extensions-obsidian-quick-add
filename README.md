@@ -38,6 +38,8 @@ If automatic detection does not find the right vault, open Raycast Preferences a
 - **Search QuickAdd Choices**: search choices, enter text, and run QuickAdd.
 - **Send Text to QuickAdd**: pass text from Raycast Root Search, pick a choice, and send it to Obsidian.
 
+To show **Send Text to QuickAdd** under arbitrary Root Search text, open **Manage Fallback Commands** in Raycast, enable **Send Text to QuickAdd**, and move it to the desired position. Raycast controls fallback command visibility and ordering.
+
 ## Publishing
 
 Development happens in the personal repository first. To submit or update the official Raycast Store pull request:
