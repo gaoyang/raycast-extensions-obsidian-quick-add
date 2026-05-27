@@ -191,11 +191,7 @@ function ChoiceListItem({
             shortcut={{ modifiers: ["cmd"], key: "r" }}
             onAction={onRefresh}
           />
-          <Action
-            title="Open Extension Preferences"
-            icon={Icon.Gear}
-            onAction={openExtensionPreferences}
-          />
+          <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
         </ActionPanel>
       }
     />
