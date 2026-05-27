@@ -25,7 +25,6 @@ export {
 };
 
 type PreferencesShape = {
-  vaultName?: string;
   vaultPath?: string;
   defaultVariableName?: string;
 };
@@ -56,13 +55,14 @@ export async function detectVaults(configPath = getObsidianConfigPath()): Promis
 export async function resolveVaults(): Promise<Vault[]> {
   const preferences = getPreferenceValues<PreferencesShape>();
   const preferencePath = String(preferences.vaultPath || "").trim();
-  const preferenceName = String(preferences.vaultName || "").trim();
 
   if (preferencePath) {
+    const vaultName = basename(preferencePath);
+
     return [
       {
-        id: preferenceName || basename(preferencePath),
-        name: preferenceName || basename(preferencePath),
+        id: vaultName,
+        name: vaultName,
         path: preferencePath,
         open: false,
         ts: 0,
@@ -73,19 +73,6 @@ export async function resolveVaults(): Promise<Vault[]> {
   const vaults = await detectVaults();
   if (vaults.length === 0) {
     throw new Error("No Obsidian vault was detected. Set a Vault Path in the extension preferences.");
-  }
-
-  if (preferenceName) {
-    const selectedVaults = vaults.filter(
-      (vault) =>
-        vault.name === preferenceName || vault.id === preferenceName || basename(vault.path) === preferenceName,
-    );
-
-    if (selectedVaults.length === 0) {
-      throw new Error(`No Obsidian vault matched "${preferenceName}". Check the Vault Name extension preference.`);
-    }
-
-    return selectedVaults;
   }
 
   return vaults;

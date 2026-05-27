@@ -38,16 +38,9 @@
   ],
   "preferences": [
     {
-      "name": "vaultName",
-      "title": "Vault Name",
-      "description": "Optional Obsidian vault name or ID for the manually configured Vault Path.",
-      "type": "textfield",
-      "required": false
-    },
-    {
       "name": "vaultPath",
       "title": "Vault Path",
-      "description": "Optional Obsidian vault path. Leave empty to automatically scan all detected vaults.",
+      "description": "Optional Obsidian vault directory. Its folder name is used as the vault name.",
       "type": "directory",
       "required": false
     },

@@ -236,7 +236,7 @@ function ChoiceForm({
     >
       <Form.Description title="Choice" text={choice.group ? `${choice.name} · ${choice.group}` : choice.name} />
       <Form.TextField id="variableName" title="Variable Name" defaultValue={defaultVariableName} />
-      <Form.TextArea id="value" title="Text" defaultValue={initialValue} autoFocus />
+      <Form.TextField id="value" title="Text" defaultValue={initialValue} autoFocus />
     </Form>
   );
 }

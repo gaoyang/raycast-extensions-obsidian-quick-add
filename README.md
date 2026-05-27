@@ -26,8 +26,7 @@ By default, the extension scans all vaults detected from:
 
 If automatic detection does not find the right vault, open Raycast Preferences and set:
 
-- `Vault Name`: the Obsidian vault name or ID used in the `obsidian://quickadd` URI for the manually configured vault.
-- `Vault Path`: the local vault directory. When set, only this vault is scanned.
+- `Vault Path`: the local vault directory. When set, only this vault is scanned, and its folder name is used as the Obsidian vault name.
 - `Default Variable Name`: defaults to `value`, matching `{{VALUE:value}}`.
 
 ## Commands
