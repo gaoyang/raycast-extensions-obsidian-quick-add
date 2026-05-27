@@ -5,6 +5,7 @@ Run Obsidian QuickAdd choices from Raycast.
 ## Features
 
 - Automatically detects Obsidian vaults from the macOS Obsidian configuration.
+- Switches between detected vaults from inside Raycast and remembers the selected vault.
 - Reads QuickAdd choices from the selected vault.
 - Searches and runs QuickAdd choices from a Raycast list command.
 - Sends text entered in Raycast Root Search to a QuickAdd choice.
@@ -23,6 +24,8 @@ By default, the extension detects the open or most recently used vault from:
 ```text
 ~/Library/Application Support/obsidian/obsidian.json
 ```
+
+If you use multiple vaults, run **Switch Vault** from the action panel to pick a detected vault. The selected vault is remembered for future launches.
 
 If automatic detection does not find the right vault, open Raycast Preferences and set:
 

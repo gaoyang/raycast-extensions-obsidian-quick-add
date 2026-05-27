@@ -30,7 +30,14 @@ type PreferencesShape = {
   defaultVariableName?: string;
 };
 
-const CACHE_KEY = "obsidian-quickadd.cache";
+const CACHE_KEY_PREFIX = "obsidian-quickadd.cache.";
+const SELECTED_VAULT_KEY = "obsidian-quickadd.selected-vault";
+
+type StoredVaultSelection = {
+  id: string;
+  path: string;
+  name: string;
+};
 
 export function getDefaultVariableName() {
   const preferences = getPreferenceValues<PreferencesShape>();
@@ -55,6 +62,33 @@ export async function detectVaults(configPath = getObsidianConfigPath()): Promis
   return normalizeVaults(config.vaults);
 }
 
+function getCacheKey(vault: Vault) {
+  return `${CACHE_KEY_PREFIX}${encodeURIComponent(vault.path)}`;
+}
+
+async function getSelectedVaultFromStorage(): Promise<StoredVaultSelection | null> {
+  const value = await LocalStorage.getItem<string>(SELECTED_VAULT_KEY);
+  if (!value) return null;
+
+  try {
+    const selection = JSON.parse(value) as StoredVaultSelection;
+    return selection?.path ? selection : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setSelectedVault(vault: Vault): Promise<void> {
+  await LocalStorage.setItem(
+    SELECTED_VAULT_KEY,
+    JSON.stringify({
+      id: vault.id,
+      path: vault.path,
+      name: vault.name,
+    } satisfies StoredVaultSelection),
+  );
+}
+
 export async function resolveVault(): Promise<Vault> {
   const preferences = getPreferenceValues<PreferencesShape>();
   const preferencePath = String(preferences.vaultPath || "").trim();
@@ -70,7 +104,13 @@ export async function resolveVault(): Promise<Vault> {
     };
   }
 
-  const vault = (await detectVaults())[0];
+  const vaults = await detectVaults();
+  const selectedVault = await getSelectedVaultFromStorage();
+  const vault =
+    (selectedVault
+      ? vaults.find((candidate) => candidate.id === selectedVault.id || candidate.path === selectedVault.path)
+      : undefined) || vaults[0];
+
   if (!vault) {
     throw new Error("No Obsidian vault was detected. Set a Vault Path in the extension preferences.");
   }
@@ -79,8 +119,10 @@ export async function resolveVault(): Promise<Vault> {
 }
 
 export async function loadQuickAddState(options: { allowCache?: boolean } = {}): Promise<QuickAddState> {
+  let vault: Vault | undefined;
+
   try {
-    const vault = await resolveVault();
+    vault = await resolveVault();
     const configPath = getQuickAddConfigPath(vault.path);
 
     if (!existsSync(configPath)) {
@@ -96,19 +138,19 @@ export async function loadQuickAddState(options: { allowCache?: boolean } = {}):
       fromCache: false,
     };
 
-    await LocalStorage.setItem(CACHE_KEY, JSON.stringify(state));
+    await LocalStorage.setItem(getCacheKey(vault), JSON.stringify(state));
     return state;
   } catch (error) {
-    if (options.allowCache) {
-      const cached = await getCachedState();
+    if (options.allowCache && vault) {
+      const cached = await getCachedState(vault);
       if (cached) return { ...cached, fromCache: true };
     }
     throw error;
   }
 }
 
-export async function getCachedState(): Promise<QuickAddState | null> {
-  const value = await LocalStorage.getItem<string>(CACHE_KEY);
+export async function getCachedState(vault: Vault): Promise<QuickAddState | null> {
+  const value = await LocalStorage.getItem<string>(getCacheKey(vault));
   if (!value) return null;
 
   try {

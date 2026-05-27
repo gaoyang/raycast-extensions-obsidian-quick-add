@@ -16,8 +16,12 @@ import {
   QuickAddChoice,
   QuickAddState,
   buildQuickAddUri,
+  detectVaults,
   getDefaultVariableName,
+  getQuickAddConfigPath,
   loadQuickAddState,
+  setSelectedVault,
+  type Vault,
 } from "./quickadd-service";
 
 type ChoiceListProps = {
@@ -74,6 +78,7 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
           actions={
             <ActionPanel>
               <Action title="Refresh Choices" icon={Icon.ArrowClockwise} onAction={() => load(false)} />
+              <Action.Push title="Switch Vault" icon={Icon.Folder} target={<VaultList onSelect={() => load(false)} />} />
               <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
             </ActionPanel>
           }
@@ -86,6 +91,7 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
           actions={
             <ActionPanel>
               <Action title="Refresh Choices" icon={Icon.ArrowClockwise} onAction={() => load(false)} />
+              <Action.Push title="Switch Vault" icon={Icon.Folder} target={<VaultList onSelect={() => load(false)} />} />
               <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
             </ActionPanel>
           }
@@ -184,6 +190,12 @@ function ChoiceListItem({
             shortcut={{ modifiers: ["cmd"], key: "r" }}
             onAction={onRefresh}
           />
+          <Action.Push
+            title="Switch Vault"
+            icon={Icon.Folder}
+            shortcut={{ modifiers: ["cmd"], key: "v" }}
+            target={<VaultList onSelect={onRefresh} />}
+          />
           <Action
             title="Open Extension Preferences"
             icon={Icon.Gear}
@@ -231,6 +243,97 @@ function ChoiceForm({
       <Form.TextField id="variableName" title="Variable Name" defaultValue={defaultVariableName} />
       <Form.TextArea id="value" title="Text" defaultValue={initialValue} autoFocus />
     </Form>
+  );
+}
+
+function VaultList({ onSelect }: { onSelect: () => void }) {
+  const [vaults, setVaults] = useState<Vault[]>([]);
+  const [error, setError] = useState<string>();
+  const [isLoading, setIsLoading] = useState(true);
+
+  async function loadVaults() {
+    setIsLoading(true);
+    setError(undefined);
+
+    try {
+      setVaults(await detectVaults());
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : String(loadError));
+      setVaults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadVaults();
+  }, []);
+
+  return (
+    <List isLoading={isLoading} navigationTitle="Switch Obsidian Vault" searchBarPlaceholder="Search vaults">
+      {error ? (
+        <List.EmptyView
+          icon={Icon.ExclamationMark}
+          title="Could Not Detect Vaults"
+          description={error}
+          actions={
+            <ActionPanel>
+              <Action title="Refresh Vaults" icon={Icon.ArrowClockwise} onAction={loadVaults} />
+              <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
+            </ActionPanel>
+          }
+        />
+      ) : vaults.length === 0 && !isLoading ? (
+        <List.EmptyView
+          icon={Icon.Folder}
+          title="No Obsidian Vaults Detected"
+          description="Open Obsidian once or set a Vault Path in extension preferences."
+          actions={
+            <ActionPanel>
+              <Action title="Refresh Vaults" icon={Icon.ArrowClockwise} onAction={loadVaults} />
+              <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
+            </ActionPanel>
+          }
+        />
+      ) : (
+        vaults.map((vault) => (
+          <VaultListItem key={`${vault.id}:${vault.path}`} vault={vault} onSelect={onSelect} onRefresh={loadVaults} />
+        ))
+      )}
+    </List>
+  );
+}
+
+function VaultListItem({ vault, onSelect, onRefresh }: { vault: Vault; onSelect: () => void; onRefresh: () => void }) {
+  const accessories = [
+    vault.open ? { text: "Open", icon: Icon.CheckCircle } : undefined,
+    vault.ts ? { date: new Date(vault.ts) } : undefined,
+  ].filter((accessory): accessory is NonNullable<typeof accessory> => Boolean(accessory));
+
+  return (
+    <List.Item
+      icon={Icon.Folder}
+      title={vault.name}
+      subtitle={vault.path}
+      accessories={accessories}
+      actions={
+        <ActionPanel>
+          <Action
+            title="Use Vault"
+            icon={Icon.CheckCircle}
+            onAction={async () => {
+              await setSelectedVault(vault);
+              await showToast({ style: Toast.Style.Success, title: "Vault Selected", message: vault.name });
+              await popToRoot({ clearSearchBar: true });
+              onSelect();
+            }}
+          />
+          <Action.Open title="Open Vault Folder" target={vault.path} icon={Icon.Finder} />
+          <Action.Open title="Open QuickAdd Config" target={getQuickAddConfigPath(vault.path)} icon={Icon.Document} />
+          <Action title="Refresh Vaults" icon={Icon.ArrowClockwise} onAction={onRefresh} />
+        </ActionPanel>
+      }
+    />
   );
 }
 
