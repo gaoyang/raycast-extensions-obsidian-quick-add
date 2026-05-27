@@ -9,7 +9,7 @@ import {
   getQuickAddConfigPath,
   normalizeVariableName,
   normalizeVaults,
-  type QuickAddChoice,
+  type QuickAddChoiceWithVault,
   type QuickAddState,
   type Vault,
 } from "./quickadd-core";
@@ -19,7 +19,7 @@ export {
   extractChoices,
   getQuickAddConfigPath,
   normalizeVariableName,
-  type QuickAddChoice,
+  type QuickAddChoiceWithVault,
   type QuickAddState,
   type Vault,
 };
@@ -30,14 +30,7 @@ type PreferencesShape = {
   defaultVariableName?: string;
 };
 
-const CACHE_KEY_PREFIX = "obsidian-quickadd.cache.";
-const SELECTED_VAULT_KEY = "obsidian-quickadd.selected-vault";
-
-type StoredVaultSelection = {
-  id: string;
-  path: string;
-  name: string;
-};
+const CACHE_KEY = "obsidian-quickadd.cache.all-vaults";
 
 export function getDefaultVariableName() {
   const preferences = getPreferenceValues<PreferencesShape>();
@@ -62,99 +55,89 @@ export async function detectVaults(configPath = getObsidianConfigPath()): Promis
   return normalizeVaults(config.vaults);
 }
 
-function getCacheKey(vault: Vault) {
-  return `${CACHE_KEY_PREFIX}${encodeURIComponent(vault.path)}`;
-}
-
-async function getSelectedVaultFromStorage(): Promise<StoredVaultSelection | null> {
-  const value = await LocalStorage.getItem<string>(SELECTED_VAULT_KEY);
-  if (!value) return null;
-
-  try {
-    const selection = JSON.parse(value) as StoredVaultSelection;
-    return selection?.path ? selection : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function setSelectedVault(vault: Vault): Promise<void> {
-  await LocalStorage.setItem(
-    SELECTED_VAULT_KEY,
-    JSON.stringify({
-      id: vault.id,
-      path: vault.path,
-      name: vault.name,
-    } satisfies StoredVaultSelection),
-  );
-}
-
-export async function resolveVault(): Promise<Vault> {
+export async function resolveVaults(): Promise<Vault[]> {
   const preferences = getPreferenceValues<PreferencesShape>();
   const preferencePath = String(preferences.vaultPath || "").trim();
   const preferenceName = String(preferences.vaultName || "").trim();
 
   if (preferencePath) {
-    return {
-      id: preferenceName || basename(preferencePath),
-      name: preferenceName || basename(preferencePath),
-      path: preferencePath,
-      open: false,
-      ts: 0,
-    };
+    return [
+      {
+        id: preferenceName || basename(preferencePath),
+        name: preferenceName || basename(preferencePath),
+        path: preferencePath,
+        open: false,
+        ts: 0,
+      },
+    ];
   }
 
   const vaults = await detectVaults();
-  const selectedVault = await getSelectedVaultFromStorage();
-  const vault =
-    (selectedVault
-      ? vaults.find((candidate) => candidate.id === selectedVault.id || candidate.path === selectedVault.path)
-      : undefined) || vaults[0];
-
-  if (!vault) {
+  if (vaults.length === 0) {
     throw new Error("No Obsidian vault was detected. Set a Vault Path in the extension preferences.");
   }
 
-  return preferenceName ? { ...vault, name: preferenceName, id: preferenceName } : vault;
+  return vaults;
 }
 
 export async function loadQuickAddState(options: { allowCache?: boolean } = {}): Promise<QuickAddState> {
-  let vault: Vault | undefined;
-
   try {
-    vault = await resolveVault();
-    const configPath = getQuickAddConfigPath(vault.path);
+    const vaults = await resolveVaults();
+    const choices: QuickAddChoiceWithVault[] = [];
+    const errors: string[] = [];
 
-    if (!existsSync(configPath)) {
-      throw new Error(`QuickAdd config was not found: ${configPath}`);
+    for (const vault of vaults) {
+      const configPath = getQuickAddConfigPath(vault.path);
+      if (!existsSync(configPath)) continue;
+
+      try {
+        const data = await readJsonFile<unknown>(configPath);
+        choices.push(...extractChoices(data).map((choice) => ({ ...choice, vault })));
+      } catch (error) {
+        errors.push(`${vault.name}: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
 
-    const data = await readJsonFile<unknown>(configPath);
-    const choices = extractChoices(data);
+    choices.sort(
+      (a, b) =>
+        a.name.localeCompare(b.name, "zh-Hans-CN") ||
+        a.vault.name.localeCompare(b.vault.name, "zh-Hans-CN") ||
+        a.group.localeCompare(b.group, "zh-Hans-CN"),
+    );
+
+    if (choices.length === 0) {
+      const message =
+        errors.length > 0
+          ? `No QuickAdd choices could be loaded. ${errors.join("; ")}`
+          : "No QuickAdd choices were found in any detected vault.";
+      throw new Error(message);
+    }
+
     const state: QuickAddState = {
-      vault,
+      vaults,
       choices,
       refreshedAt: new Date().toISOString(),
       fromCache: false,
     };
 
-    await LocalStorage.setItem(getCacheKey(vault), JSON.stringify(state));
+    await LocalStorage.setItem(CACHE_KEY, JSON.stringify(state));
     return state;
   } catch (error) {
-    if (options.allowCache && vault) {
-      const cached = await getCachedState(vault);
+    if (options.allowCache) {
+      const cached = await getCachedState();
       if (cached) return { ...cached, fromCache: true };
     }
     throw error;
   }
 }
 
-export async function getCachedState(vault: Vault): Promise<QuickAddState | null> {
-  const value = await LocalStorage.getItem<string>(getCacheKey(vault));
+export async function getCachedState(): Promise<QuickAddState | null> {
+  const value = await LocalStorage.getItem<string>(CACHE_KEY);
   if (!value) return null;
 
   try {
-    return JSON.parse(value) as QuickAddState;
+    const state = JSON.parse(value) as QuickAddState;
+    return state.choices.every((choice) => choice.vault?.path) ? state : null;
   } catch {
     return null;
   }

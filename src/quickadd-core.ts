@@ -15,9 +15,13 @@ export type QuickAddChoice = {
   enabled: boolean;
 };
 
-export type QuickAddState = {
+export type QuickAddChoiceWithVault = QuickAddChoice & {
   vault: Vault;
-  choices: QuickAddChoice[];
+};
+
+export type QuickAddState = {
+  vaults: Vault[];
+  choices: QuickAddChoiceWithVault[];
   refreshedAt: string;
   fromCache: boolean;
 };

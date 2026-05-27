@@ -17,7 +17,7 @@
       "name": "quickadd",
       "title": "Search QuickAdd Choices",
       "subtitle": "Obsidian",
-      "description": "Search and run QuickAdd choices in your Obsidian vault.",
+      "description": "Search and run QuickAdd choices across your Obsidian vaults.",
       "mode": "view"
     },
     {
@@ -40,14 +40,14 @@
     {
       "name": "vaultName",
       "title": "Vault Name",
-      "description": "Optional Obsidian vault name or ID. Leave empty to use the detected vault name.",
+      "description": "Optional Obsidian vault name or ID for the manually configured Vault Path.",
       "type": "textfield",
       "required": false
     },
     {
       "name": "vaultPath",
       "title": "Vault Path",
-      "description": "Optional Obsidian vault path. Leave empty to automatically detect the open or most recent vault.",
+      "description": "Optional Obsidian vault path. Leave empty to automatically scan all detected vaults.",
       "type": "directory",
       "required": false
     },

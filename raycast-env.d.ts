@@ -8,9 +8,9 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 type ExtensionPreferences = {
-  /** Vault Name - Optional Obsidian vault name or ID. Leave empty to use the detected vault name. */
+  /** Vault Name - Optional Obsidian vault name or ID for the manually configured Vault Path. */
   "vaultName"?: string,
-  /** Vault Path - Optional Obsidian vault path. Leave empty to automatically detect the open or most recent vault. */
+  /** Vault Path - Optional Obsidian vault path. Leave empty to automatically scan all detected vaults. */
   "vaultPath"?: string,
   /** Default Variable Name - The QuickAdd variable name used in the URI parameter value-<name>. */
   "defaultVariableName": string
