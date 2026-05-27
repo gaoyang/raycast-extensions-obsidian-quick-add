@@ -32,20 +32,13 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
   const [error, setError] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);
 
-  async function load(allowCache = true) {
+  async function load() {
     setIsLoading(true);
     setError(undefined);
 
     try {
-      const nextState = await loadQuickAddState({ allowCache });
+      const nextState = await loadQuickAddState();
       setState(nextState);
-      if (nextState.fromCache) {
-        await showToast({
-          style: Toast.Style.Failure,
-          title: "Using Cached Choices",
-          message: "Refresh failed, so the last loaded QuickAdd choices are shown.",
-        });
-      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : String(loadError));
       setState(null);
@@ -75,7 +68,7 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
           description={error}
           actions={
             <ActionPanel>
-              <Action title="Refresh Choices" icon={Icon.ArrowClockwise} onAction={() => load(false)} />
+              <Action title="Refresh Choices" icon={Icon.ArrowClockwise} onAction={load} />
               <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
             </ActionPanel>
           }
@@ -87,7 +80,7 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
           description="Check that QuickAdd is installed and has choices configured in at least one detected vault."
           actions={
             <ActionPanel>
-              <Action title="Refresh Choices" icon={Icon.ArrowClockwise} onAction={() => load(false)} />
+              <Action title="Refresh Choices" icon={Icon.ArrowClockwise} onAction={load} />
               <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
             </ActionPanel>
           }
@@ -97,10 +90,9 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
           <ChoiceListItem
             key={`${choice.vault.id}:${choice.vault.path}:${choice.name}`}
             choice={choice}
-            fromCache={Boolean(state?.fromCache)}
             initialText={initialText}
             directSend={directSend}
-            onRefresh={() => load(false)}
+            onRefresh={load}
           />
         ))
       )}
@@ -110,13 +102,11 @@ export function ChoiceList({ initialText = "", directSend = false }: ChoiceListP
 
 function ChoiceListItem({
   choice,
-  fromCache,
   initialText,
   directSend,
   onRefresh,
 }: {
   choice: QuickAddChoiceWithVault;
-  fromCache: boolean;
   initialText: string;
   directSend: boolean;
   onRefresh: () => void;
@@ -128,8 +118,6 @@ function ChoiceListItem({
     `${escapeMarkdown(vaultName || "Default Obsidian Vault")} · ${escapeMarkdown(choice.type)}${
       choice.group ? ` · ${escapeMarkdown(choice.group)}` : ""
     }`,
-    fromCache ? "" : undefined,
-    fromCache ? "> Showing cached choices because the latest refresh failed." : undefined,
   ]
     .filter((line) => line !== undefined)
     .join("\n");
@@ -151,11 +139,7 @@ function ChoiceListItem({
               ) : null}
               <List.Item.Detail.Metadata.Separator />
               <List.Item.Detail.Metadata.Label title="Vault Path" text={choice.vault.path} icon={Icon.HardDrive} />
-              <List.Item.Detail.Metadata.Label
-                title="Source"
-                text={fromCache ? "Cached choices" : "Latest QuickAdd config"}
-                icon={fromCache ? Icon.Clock : Icon.CheckCircle}
-              />
+              <List.Item.Detail.Metadata.Label title="Source" text="Latest QuickAdd config" icon={Icon.CheckCircle} />
             </List.Item.Detail.Metadata>
           }
         />

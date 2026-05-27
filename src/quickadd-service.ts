@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { homedir } from "node:os";
-import { LocalStorage, getPreferenceValues } from "@raycast/api";
+import { getPreferenceValues } from "@raycast/api";
 import {
   buildQuickAddUri,
   extractChoices,
@@ -29,8 +29,6 @@ type PreferencesShape = {
   vaultPath?: string;
   defaultVariableName?: string;
 };
-
-const CACHE_KEY = "obsidian-quickadd.cache.all-vaults";
 
 export function getDefaultVariableName() {
   const preferences = getPreferenceValues<PreferencesShape>();
@@ -77,68 +75,57 @@ export async function resolveVaults(): Promise<Vault[]> {
     throw new Error("No Obsidian vault was detected. Set a Vault Path in the extension preferences.");
   }
 
+  if (preferenceName) {
+    const selectedVaults = vaults.filter(
+      (vault) =>
+        vault.name === preferenceName || vault.id === preferenceName || basename(vault.path) === preferenceName,
+    );
+
+    if (selectedVaults.length === 0) {
+      throw new Error(`No Obsidian vault matched "${preferenceName}". Check the Vault Name extension preference.`);
+    }
+
+    return selectedVaults;
+  }
+
   return vaults;
 }
 
-export async function loadQuickAddState(options: { allowCache?: boolean } = {}): Promise<QuickAddState> {
-  try {
-    const vaults = await resolveVaults();
-    const choices: QuickAddChoiceWithVault[] = [];
-    const errors: string[] = [];
+export async function loadQuickAddState(): Promise<QuickAddState> {
+  const vaults = await resolveVaults();
+  const choices: QuickAddChoiceWithVault[] = [];
+  const errors: string[] = [];
 
-    for (const vault of vaults) {
-      const configPath = getQuickAddConfigPath(vault.path);
-      if (!existsSync(configPath)) continue;
+  for (const vault of vaults) {
+    const configPath = getQuickAddConfigPath(vault.path);
+    if (!existsSync(configPath)) continue;
 
-      try {
-        const data = await readJsonFile<unknown>(configPath);
-        choices.push(...extractChoices(data).map((choice) => ({ ...choice, vault })));
-      } catch (error) {
-        errors.push(`${vault.name}: ${error instanceof Error ? error.message : String(error)}`);
-      }
+    try {
+      const data = await readJsonFile<unknown>(configPath);
+      choices.push(...extractChoices(data).map((choice) => ({ ...choice, vault })));
+    } catch (error) {
+      errors.push(`${vault.name}: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    choices.sort(
-      (a, b) =>
-        a.name.localeCompare(b.name, "zh-Hans-CN") ||
-        a.vault.name.localeCompare(b.vault.name, "zh-Hans-CN") ||
-        a.group.localeCompare(b.group, "zh-Hans-CN"),
-    );
-
-    if (choices.length === 0) {
-      const message =
-        errors.length > 0
-          ? `No QuickAdd choices could be loaded. ${errors.join("; ")}`
-          : "No QuickAdd choices were found in any detected vault.";
-      throw new Error(message);
-    }
-
-    const state: QuickAddState = {
-      vaults,
-      choices,
-      refreshedAt: new Date().toISOString(),
-      fromCache: false,
-    };
-
-    await LocalStorage.setItem(CACHE_KEY, JSON.stringify(state));
-    return state;
-  } catch (error) {
-    if (options.allowCache) {
-      const cached = await getCachedState();
-      if (cached) return { ...cached, fromCache: true };
-    }
-    throw error;
   }
-}
 
-export async function getCachedState(): Promise<QuickAddState | null> {
-  const value = await LocalStorage.getItem<string>(CACHE_KEY);
-  if (!value) return null;
+  choices.sort(
+    (a, b) =>
+      a.name.localeCompare(b.name, "zh-Hans-CN") ||
+      a.vault.name.localeCompare(b.vault.name, "zh-Hans-CN") ||
+      a.group.localeCompare(b.group, "zh-Hans-CN"),
+  );
 
-  try {
-    const state = JSON.parse(value) as QuickAddState;
-    return state.choices.every((choice) => choice.vault?.path) ? state : null;
-  } catch {
-    return null;
+  if (choices.length === 0) {
+    const message =
+      errors.length > 0
+        ? `No QuickAdd choices could be loaded. ${errors.join("; ")}`
+        : "No QuickAdd choices were found in the selected vault.";
+    throw new Error(message);
   }
+
+  return {
+    vaults,
+    choices,
+    refreshedAt: new Date().toISOString(),
+  };
 }

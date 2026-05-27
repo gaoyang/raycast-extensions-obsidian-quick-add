@@ -23,7 +23,6 @@ export type QuickAddState = {
   vaults: Vault[];
   choices: QuickAddChoiceWithVault[];
   refreshedAt: string;
-  fromCache: boolean;
 };
 
 export function normalizeVariableName(variableName?: string) {
